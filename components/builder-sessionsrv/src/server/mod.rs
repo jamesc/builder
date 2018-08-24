@@ -95,10 +95,6 @@ lazy_static! {
             handlers::account_origin_invitation_ignore,
         );
         map.register(
-            proto::AccountOriginInvitationRescindRequest::descriptor_static(),
-            handlers::account_origin_invitation_rescind,
-        );
-        map.register(
             proto::AccountOriginListRequest::descriptor_static(),
             handlers::account_origin_list_request,
         );

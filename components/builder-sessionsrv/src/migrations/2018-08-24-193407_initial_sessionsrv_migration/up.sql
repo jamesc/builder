@@ -1,6 +1,5 @@
 CREATE SEQUENCE accounts_id_seq; 
 CREATE SEQUENCE account_tokens_id_seq;
-CREATE SEQUENCE account_invitations_id_seq;
 
 CREATE TABLE accounts (
     id bigint DEFAULT next_id_v1('accounts_id_seq') PRIMARY KEY NOT NULL,
@@ -26,39 +25,6 @@ CREATE TABLE account_tokens (
     token text UNIQUE,
     created_at timestamp with time zone DEFAULT now()
 );
-
-CREATE TABLE account_invitations (
-    id bigint DEFAULT next_id_v1('account_invitations_id_seq') PRIMARY KEY NOT NULL,
-    origin_invitation_id bigint,
-    origin_id bigint,
-    origin_name text,
-    account_id bigint REFERENCES accounts(id),
-    account_name text REFERENCES accounts(name),
-    owner_id bigint,
-    ignored boolean DEFAULT false,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
-    UNIQUE (origin_id, account_id) 
-);
-
-CREATE FUNCTION accept_account_invitation_v1(oi_invite_id bigint, oi_ignore boolean) RETURNS void
-    LANGUAGE plpgsql
-    AS $$
-  DECLARE
-    oi_origin_id bigint;
-    oi_origin_name text;
-    oi_account_id bigint;
-    oi_account_name text;
-  BEGIN
-    IF oi_ignore = true THEN
-      UPDATE account_invitations SET ignored = true, updated_at = now() WHERE origin_invitation_id = oi_invite_id;
-    ELSE
-      SELECT origin_id, origin_name, account_id, account_name INTO oi_origin_id, oi_origin_name, oi_account_id, oi_account_name FROM account_invitations WHERE origin_invitation_id = oi_invite_id;
-      PERFORM insert_account_origin_v1(oi_account_id, oi_account_name, oi_origin_id, oi_origin_name);
-      DELETE FROM account_invitations WHERE origin_invitation_id = oi_invite_id;
-    END IF;
-  END
-$$;
 
 CREATE FUNCTION delete_account_origin_v1(aod_account_name text, aod_origin_id bigint) RETURNS void
     LANGUAGE sql
@@ -105,38 +71,6 @@ CREATE FUNCTION get_account_tokens_v1(p_account_id bigint) RETURNS SETOF account
     SELECT * FROM account_tokens WHERE account_id = p_account_id;
 $$;
 
-CREATE FUNCTION get_invitations_for_account_v1(oi_account_id bigint) RETURNS SETOF account_invitations
-    LANGUAGE plpgsql STABLE
-    AS $$
-  BEGIN
-    RETURN QUERY SELECT * FROM account_invitations WHERE account_id = oi_account_id AND ignored = false
-      ORDER BY origin_name ASC;
-    RETURN;
-  END
-$$;
-
-CREATE FUNCTION ignore_account_invitation_v1(oi_invitation_id bigint, oi_account_id bigint) RETURNS void
-    LANGUAGE sql
-    AS $$
-  UPDATE account_invitations
-  SET ignored = true, updated_at = now()
-  WHERE origin_invitation_id = oi_invitation_id AND account_id = oi_account_id;
-$$;
-
-CREATE FUNCTION insert_account_invitation_v1(oi_origin_id bigint, oi_origin_name text, oi_origin_invitation_id bigint, oi_account_id bigint, oi_account_name text, oi_owner_id bigint) RETURNS SETOF account_invitations
-    LANGUAGE plpgsql
-    AS $$
-  BEGIN
-    IF NOT EXISTS (SELECT true FROM account_origins WHERE origin_id = oi_origin_id AND account_id = oi_account_id) THEN
-      RETURN QUERY INSERT INTO account_invitations (origin_id, origin_invitation_id, origin_name, account_id, account_name, owner_id)
-        VALUES (oi_origin_id, oi_origin_invitation_id, oi_origin_name, oi_account_id, oi_account_name, oi_owner_id)
-        ON CONFLICT DO NOTHING
-        RETURNING *;
-      RETURN;
-    END IF;
-  END
-$$;
-
 CREATE FUNCTION insert_account_origin_v1(o_account_id bigint, o_account_name text, o_origin_id bigint, o_origin_name text) RETURNS void
     LANGUAGE plpgsql
     AS $$
@@ -152,15 +86,6 @@ CREATE FUNCTION insert_account_token_v1(p_account_id bigint, p_token text) RETUR
     INSERT INTO account_tokens (account_id, token)
     VALUES (p_account_id, p_token)
     RETURNING *;
-$$;
-
-CREATE FUNCTION rescind_account_invitation_v1(oi_invitation_id bigint, oi_account_id bigint) RETURNS void
-    LANGUAGE sql
-    AS $$
-  DELETE FROM account_invitations
-  WHERE origin_invitation_id = oi_invitation_id
-  AND account_id = oi_account_id
-  AND ignored = false;
 $$;
 
 CREATE FUNCTION revoke_account_token_v1(p_id bigint) RETURNS void

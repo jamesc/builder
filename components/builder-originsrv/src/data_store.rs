@@ -592,7 +592,6 @@ impl DataStore {
         oirr: &originsrv::OriginInvitationRescindRequest,
     ) -> SrvResult<()> {
         let pconn = self.pool.get()?;
-        let mut aoirr = sessionsrv::AccountOriginInvitationRescindRequest::new();
 
         let rows = &pconn
             .query(
@@ -601,28 +600,9 @@ impl DataStore {
             )
             .map_err(SrvError::OriginInvitationGet)?;
 
-        if rows.len() == 1 {
-            let row = rows.get(0);
-            let account_id: i64 = row.get("account_id");
-            aoirr.set_account_id(account_id as u64);
-        } else {
+        if rows.len() != 1 {
             let err = NetError::new(ErrCode::ENTITY_NOT_FOUND, "od:rescind-origin-invitation:0");
             return Err(SrvError::NetError(err));
-        }
-
-        aoirr.set_invitation_id(oirr.get_invitation_id());
-
-        match conn.route::<sessionsrv::AccountOriginInvitationRescindRequest, NetOk>(&aoirr) {
-            Ok(_) => {
-                debug!("Updated session service; rescinded invitation, {:?}", aoirr);
-            }
-            Err(e) => {
-                error!(
-                    "Failed to update session service on invitation rescind, {:?}, {:?}",
-                    aoirr, e
-                );
-                return Err(SrvError::from(e));
-            }
         }
 
         let tr = pconn.transaction().map_err(SrvError::DbTransactionStart)?;

@@ -16,14 +16,13 @@
 
 embed_migrations!("src/migrations");
 
-use std::env;
 use std::io;
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use db::config::DataStoreCfg;
 use db::diesel_pool::DieselPool;
-use db::migration::{self, setup_ids};
+use db::migration::setup_ids;
 use db::pool::Pool;
 use diesel::result::Error as Dre;
 use diesel::Connection;
@@ -258,23 +257,6 @@ impl DataStore {
                 &(request.get_account_id() as i64),
             ],
         ).map_err(SrvError::AccountOriginInvitationIgnore)?;
-        tr.commit().map_err(SrvError::DbTransactionCommit)?;
-        Ok(())
-    }
-
-    pub fn rescind_origin_invitation(
-        &self,
-        request: &sessionsrv::AccountOriginInvitationRescindRequest,
-    ) -> SrvResult<()> {
-        let conn = self.pool.get()?;
-        let tr = conn.transaction().map_err(SrvError::DbTransactionStart)?;
-        tr.execute(
-            "SELECT * FROM rescind_account_invitation_v1($1, $2)",
-            &[
-                &(request.get_invitation_id() as i64),
-                &(request.get_account_id() as i64),
-            ],
-        ).map_err(SrvError::AccountOriginInvitationRescind)?;
         tr.commit().map_err(SrvError::DbTransactionCommit)?;
         Ok(())
     }
