@@ -282,7 +282,6 @@ pub struct ServerState {
 impl ServerState {
     fn new(cfg: Config, router_pipe: Arc<String>) -> SrvResult<Self> {
         let datastore = DataStore::new(&cfg.datastore, router_pipe)?;
-        datastore.validate_shard_migration()?;
 
         Ok(ServerState {
             datastore: datastore,

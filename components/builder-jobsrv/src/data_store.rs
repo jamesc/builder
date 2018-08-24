@@ -79,15 +79,6 @@ impl DataStore {
         Ok(())
     }
 
-    /// Validate that the shard migration has happened.
-    pub fn validate_shard_migration(&self) -> Result<()> {
-        if env::var_os("HAB_FUNC_TEST").is_some() {
-            Ok(())
-        } else {
-            migration::validate_shard_migration(&self.pool).map_err(Error::Db)
-        }
-    }
-
     /// Create a new job. Sets the state to Pending.
     ///
     /// # Errors

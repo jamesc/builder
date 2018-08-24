@@ -201,7 +201,6 @@ pub struct ServerState {
 impl ServerState {
     fn new(cfg: Config) -> SrvResult<Self> {
         let datastore = DataStore::new(&cfg.datastore)?;
-        datastore.validate_shard_migration()?;
 
         Ok(ServerState {
             datastore: datastore,

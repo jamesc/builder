@@ -61,15 +61,6 @@ impl DataStore {
         Ok(())
     }
 
-    /// Validate that the shard migration has happened.
-    pub fn validate_shard_migration(&self) -> SrvResult<()> {
-        if env::var_os("HAB_FUNC_TEST").is_some() {
-            Ok(())
-        } else {
-            migration::validate_shard_migration(&self.pool).map_err(SrvError::Db)
-        }
-    }
-
     pub fn account_find_or_create(
         &self,
         msg: &sessionsrv::AccountFindOrCreate,
